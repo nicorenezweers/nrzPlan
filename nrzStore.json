@@ -1,0 +1,6 @@
+{
+  "store": "nicorenezweers/nrzStore",
+  "app": "nrz-plan",
+  "tagPrefix": "umbrel-",
+  "package": "umbrel"
+}

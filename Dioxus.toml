@@ -1,0 +1,11 @@
+[application]
+name = "nrzplan"
+
+[web.app]
+title = "nrzPlan"
+
+[web.resource]
+dev = []
+
+[serve]
+fullstack = true
