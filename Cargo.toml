@@ -1,6 +1,6 @@
 [package]
 name = "nrzplan"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 description = "nrzPlan – Boards, Todos, Kalender und Fokus an einem Ort (Dioxus + nrzUI)"
 license = "MIT"
@@ -19,7 +19,7 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "v7", "serde", "js"] }
 
 # Server-only
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "chrono", "json", "macros", "migrate"], optional = true }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite", "chrono", "json", "macros", "migrate"], optional = true }
 dotenv = { version = "0.15", optional = true }
 sha2 = { version = "0.10", optional = true }
 tokio = { version = "1", features = ["fs", "rt", "macros"], optional = true }

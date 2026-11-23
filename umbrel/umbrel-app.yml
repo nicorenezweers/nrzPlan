@@ -2,7 +2,7 @@ manifestVersion: 1
 id: nrz-plan
 category: files
 name: nrzPlan
-version: "1.0.0"
+version: "1.1.0"
 tagline: "Todos, Kalender, Kanban-Boards und Fokus-Timer mit REST-API und Webhooks"
 icon: http://100.78.107.162:8390/nicorenezweers/nrzStore/raw/branch/main/nrz-plan/icon.png
 port: 8560

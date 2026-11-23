@@ -139,7 +139,7 @@ pub async fn get_board_full(pool: &SqlitePool, key: &str) -> Result<BoardFull> {
         .bind(&board.id)
         .fetch_all(pool)
         .await?;
-    let cards = sqlx::query_as::<_, Card>(&format!("{CARD_SELECT} WHERE c.board_id = ? ORDER BY c.position"))
+    let cards = sqlx::query_as::<_, Card>(sqlx::AssertSqlSafe(format!("{CARD_SELECT} WHERE c.board_id = ? ORDER BY c.position")))
         .bind(&board.id)
         .fetch_all(pool)
         .await?;
@@ -277,7 +277,7 @@ const CARD_REF_SELECT: &str = "SELECT c.id, c.board_id, c.column_id, c.title, c.
     FROM cards c JOIN boards b ON b.id = c.board_id JOIN board_columns col ON col.id = c.column_id";
 
 pub async fn get_card(pool: &SqlitePool, id: &str) -> Result<Card> {
-    sqlx::query_as::<_, Card>(&format!("{CARD_SELECT} WHERE c.id = ?"))
+    sqlx::query_as::<_, Card>(sqlx::AssertSqlSafe(format!("{CARD_SELECT} WHERE c.id = ?")))
         .bind(id)
         .fetch_optional(pool)
         .await?
@@ -285,7 +285,7 @@ pub async fn get_card(pool: &SqlitePool, id: &str) -> Result<Card> {
 }
 
 pub async fn get_card_detail(pool: &SqlitePool, id: &str) -> Result<CardDetail> {
-    let r = sqlx::query_as::<_, CardRef>(&format!("{CARD_REF_SELECT} WHERE c.id = ?"))
+    let r = sqlx::query_as::<_, CardRef>(sqlx::AssertSqlSafe(format!("{CARD_REF_SELECT} WHERE c.id = ?")))
         .bind(id)
         .fetch_optional(pool)
         .await?
@@ -300,7 +300,7 @@ pub async fn get_card_detail(pool: &SqlitePool, id: &str) -> Result<CardDetail> 
 }
 
 pub async fn find_card_external(pool: &SqlitePool, board_id: &str, source: &str, external_id: &str) -> Result<Card> {
-    sqlx::query_as::<_, Card>(&format!("{CARD_SELECT} WHERE c.board_id = ? AND c.source = ? AND c.external_id = ?"))
+    sqlx::query_as::<_, Card>(sqlx::AssertSqlSafe(format!("{CARD_SELECT} WHERE c.board_id = ? AND c.source = ? AND c.external_id = ?")))
         .bind(board_id)
         .bind(source)
         .bind(external_id)
@@ -639,7 +639,7 @@ pub struct TodoFilter {
 }
 
 pub async fn list_todos(pool: &SqlitePool, f: TodoFilter) -> Result<Vec<Todo>> {
-    let all = sqlx::query_as::<_, Todo>(&format!("{TODO_SELECT} {TODO_ORDER}")).fetch_all(pool).await?;
+    let all = sqlx::query_as::<_, Todo>(sqlx::AssertSqlSafe(format!("{TODO_SELECT} {TODO_ORDER}"))).fetch_all(pool).await?;
     Ok(all
         .into_iter()
         .filter(|t| f.done.is_none_or(|d| t.done == d))
@@ -653,14 +653,14 @@ pub async fn list_todos(pool: &SqlitePool, f: TodoFilter) -> Result<Vec<Todo>> {
 /// Offene Todos + in den letzten 14 Tagen erledigte (für die UI).
 pub async fn list_todos_ui(pool: &SqlitePool) -> Result<Vec<Todo>> {
     let since = ts(now() - Duration::days(14));
-    Ok(sqlx::query_as::<_, Todo>(&format!("{TODO_SELECT} WHERE done = 0 OR done_at >= ? {TODO_ORDER}"))
+    Ok(sqlx::query_as::<_, Todo>(sqlx::AssertSqlSafe(format!("{TODO_SELECT} WHERE done = 0 OR done_at >= ? {TODO_ORDER}")))
         .bind(since)
         .fetch_all(pool)
         .await?)
 }
 
 pub async fn get_todo(pool: &SqlitePool, id: &str) -> Result<Todo> {
-    sqlx::query_as::<_, Todo>(&format!("{TODO_SELECT} WHERE id = ?"))
+    sqlx::query_as::<_, Todo>(sqlx::AssertSqlSafe(format!("{TODO_SELECT} WHERE id = ?")))
         .bind(id)
         .fetch_optional(pool)
         .await?
@@ -831,9 +831,9 @@ const EVENT_SELECT: &str =
 
 /// Termine, die den Zeitraum [from, to) berühren.
 pub async fn list_events(pool: &SqlitePool, from: NaiveDateTime, to: NaiveDateTime) -> Result<Vec<Event>> {
-    Ok(sqlx::query_as::<_, Event>(&format!(
+    Ok(sqlx::query_as::<_, Event>(sqlx::AssertSqlSafe(format!(
         "{EVENT_SELECT} WHERE start_at < ? AND end_at >= ? ORDER BY all_day DESC, start_at"
-    ))
+    )))
     .bind(ts(to))
     .bind(ts(from))
     .fetch_all(pool)
@@ -841,7 +841,7 @@ pub async fn list_events(pool: &SqlitePool, from: NaiveDateTime, to: NaiveDateTi
 }
 
 pub async fn get_event(pool: &SqlitePool, id: &str) -> Result<Event> {
-    sqlx::query_as::<_, Event>(&format!("{EVENT_SELECT} WHERE id = ?"))
+    sqlx::query_as::<_, Event>(sqlx::AssertSqlSafe(format!("{EVENT_SELECT} WHERE id = ?")))
         .bind(id)
         .fetch_optional(pool)
         .await?
@@ -987,10 +987,10 @@ pub async fn delete_event(pool: &SqlitePool, id: &str) -> Result<()> {
 
 async fn cards_due_between(pool: &SqlitePool, from: NaiveDate, to: NaiveDate, open_only: bool) -> Result<Vec<CardRef>> {
     let extra = if open_only { "AND col.is_done = 0" } else { "" };
-    Ok(sqlx::query_as::<_, CardRef>(&format!(
+    Ok(sqlx::query_as::<_, CardRef>(sqlx::AssertSqlSafe(format!(
         "{CARD_REF_SELECT} WHERE c.due_date IS NOT NULL AND c.due_date >= ? AND c.due_date <= ? {extra}
          ORDER BY c.due_date, c.priority DESC"
-    ))
+    )))
     .bind(day(from))
     .bind(day(to))
     .fetch_all(pool)
@@ -1002,9 +1002,9 @@ pub async fn calendar(pool: &SqlitePool, from: NaiveDate, to: NaiveDate) -> Resu
     let start = from.and_hms_opt(0, 0, 0).unwrap_or_default();
     let end = (to + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap_or_default();
     let events = list_events(pool, start, end).await?;
-    let todos = sqlx::query_as::<_, Todo>(&format!(
+    let todos = sqlx::query_as::<_, Todo>(sqlx::AssertSqlSafe(format!(
         "{TODO_SELECT} WHERE due_date IS NOT NULL AND due_date >= ? AND due_date <= ? {TODO_ORDER}"
-    ))
+    )))
     .bind(day(from))
     .bind(day(to))
     .fetch_all(pool)
@@ -1016,7 +1016,7 @@ pub async fn calendar(pool: &SqlitePool, from: NaiveDate, to: NaiveDate) -> Resu
 pub async fn today(pool: &SqlitePool, date: NaiveDate) -> Result<TodayData> {
     let start = date.and_hms_opt(0, 0, 0).unwrap_or_default();
     let events = list_events(pool, start, start + Duration::days(1)).await?;
-    let open = sqlx::query_as::<_, Todo>(&format!("{TODO_SELECT} WHERE done = 0 {TODO_ORDER}")).fetch_all(pool).await?;
+    let open = sqlx::query_as::<_, Todo>(sqlx::AssertSqlSafe(format!("{TODO_SELECT} WHERE done = 0 {TODO_ORDER}"))).fetch_all(pool).await?;
     let open_total = open.len() as i64;
     let mut overdue = Vec::new();
     let mut today = Vec::new();
@@ -1099,14 +1099,14 @@ pub async fn list_activity(pool: &SqlitePool, board_id: Option<&str>, limit: i64
     let limit = limit.clamp(1, 500);
     Ok(match board_id {
         Some(b) => {
-            sqlx::query_as::<_, Activity>(&format!("{sql} WHERE board_id = ? ORDER BY created_at DESC, id DESC LIMIT ?"))
+            sqlx::query_as::<_, Activity>(sqlx::AssertSqlSafe(format!("{sql} WHERE board_id = ? ORDER BY created_at DESC, id DESC LIMIT ?")))
                 .bind(b)
                 .bind(limit)
                 .fetch_all(pool)
                 .await?
         }
         None => {
-            sqlx::query_as::<_, Activity>(&format!("{sql} ORDER BY created_at DESC, id DESC LIMIT ?"))
+            sqlx::query_as::<_, Activity>(sqlx::AssertSqlSafe(format!("{sql} ORDER BY created_at DESC, id DESC LIMIT ?")))
                 .bind(limit)
                 .fetch_all(pool)
                 .await?
@@ -1122,11 +1122,11 @@ const WEBHOOK_SELECT: &str =
     "SELECT id, name, url, secret, events, active, created_at, last_status, last_error, last_at FROM webhooks";
 
 pub async fn list_webhooks(pool: &SqlitePool) -> Result<Vec<Webhook>> {
-    Ok(sqlx::query_as::<_, Webhook>(&format!("{WEBHOOK_SELECT} ORDER BY created_at")).fetch_all(pool).await?)
+    Ok(sqlx::query_as::<_, Webhook>(sqlx::AssertSqlSafe(format!("{WEBHOOK_SELECT} ORDER BY created_at"))).fetch_all(pool).await?)
 }
 
 pub async fn get_webhook(pool: &SqlitePool, id: &str) -> Result<Webhook> {
-    sqlx::query_as::<_, Webhook>(&format!("{WEBHOOK_SELECT} WHERE id = ?"))
+    sqlx::query_as::<_, Webhook>(sqlx::AssertSqlSafe(format!("{WEBHOOK_SELECT} WHERE id = ?")))
         .bind(id)
         .fetch_optional(pool)
         .await?
@@ -1205,24 +1205,24 @@ pub async fn search(pool: &SqlitePool, q: &str) -> Result<SearchResults> {
     .bind(&like)
     .fetch_all(pool)
     .await?;
-    let cards = sqlx::query_as::<_, CardRef>(&format!(
+    let cards = sqlx::query_as::<_, CardRef>(sqlx::AssertSqlSafe(format!(
         "{CARD_REF_SELECT} WHERE c.title LIKE ?1 ESCAPE '\\' OR c.description LIKE ?1 ESCAPE '\\'
          OR c.external_id = ?2 ORDER BY col.is_done, c.updated_at DESC LIMIT 8"
-    ))
+    )))
     .bind(&like)
     .bind(q)
     .fetch_all(pool)
     .await?;
-    let todos = sqlx::query_as::<_, Todo>(&format!(
+    let todos = sqlx::query_as::<_, Todo>(sqlx::AssertSqlSafe(format!(
         "{TODO_SELECT} WHERE title LIKE ?1 ESCAPE '\\' OR notes LIKE ?1 ESCAPE '\\' {TODO_ORDER} LIMIT 8"
-    ))
+    )))
     .bind(&like)
     .fetch_all(pool)
     .await?;
-    let events = sqlx::query_as::<_, Event>(&format!(
+    let events = sqlx::query_as::<_, Event>(sqlx::AssertSqlSafe(format!(
         "{EVENT_SELECT} WHERE title LIKE ?1 ESCAPE '\\' OR location LIKE ?1 ESCAPE '\\'
          ORDER BY ABS(julianday(start_at) - julianday('now')) LIMIT 6"
-    ))
+    )))
     .bind(&like)
     .fetch_all(pool)
     .await?;
